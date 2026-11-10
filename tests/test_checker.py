@@ -106,10 +106,6 @@ class FixTests(unittest.TestCase):
         self.assertEqual(text, "A=1\nC=z\n")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class MultiFileTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -190,3 +186,7 @@ class TypeHintTests(unittest.TestCase):
     def test_ignore_skips_check(self):
         r = self.report("PORT=abc\nDEBUG=true\nRATE=1\nURL=http://a.b\nNAME=z\n", ignore=["PORT"])
         self.assertEqual(r.invalid, [])
+
+
+if __name__ == "__main__":
+    unittest.main()

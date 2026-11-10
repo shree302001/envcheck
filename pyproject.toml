@@ -14,6 +14,7 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Environment :: Console",
+  "Topic :: Software Development :: Quality Assurance",
 ]
 
 [project.scripts]
