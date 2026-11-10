@@ -55,7 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="envcheck",
         description="Check a .env file against a .env.example template.",
     )
-    p.add_argument("env", nargs="?", default=".env", help="env file (default: .env)")
+    p.add_argument("env", nargs="*", help="env file(s) to check (default: .env)")
     p.add_argument("-e", "--example", default=".env.example",
                    help="template file (default: .env.example)")
     p.add_argument("--strict", action="store_true",
@@ -69,33 +69,50 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def check_file(path: str, example: ParsedEnv, args: argparse.Namespace) -> dict:
+    """Check one env file; return its report data plus ``added`` and ``failed``."""
+    env = parse(_read(path))
+    added: List[str] = []
+    if args.fix:
+        added = append_missing(path, env, example, args.ignore)
+        if added:
+            env = parse(_read(path))
+    report = compare(env, example, args.ignore)
+    return {"report": report, "added": added,
+            "failed": report.problems(args.strict) > 0}
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
+    paths = args.env or [".env"]
     try:
-        env = parse(_read(args.env))
         example = parse(_read(args.example))
+        results = [(p, check_file(p, example, args)) for p in paths]
     except OSError as exc:
         print(f"envcheck: {exc}", file=sys.stderr)
         return 2
-    added: List[str] = []
-    if args.fix:
-        try:
-            added = append_missing(args.env, env, example, args.ignore)
-            if added:
-                env = parse(_read(args.env))
-        except OSError as exc:
-            print(f"envcheck: {exc}", file=sys.stderr)
-            return 2
-    report = compare(env, example, args.ignore)
-    failed = report.problems(args.strict) > 0
+    failed = any(r["failed"] for _, r in results)
     if args.format == "json":
-        data = report.to_dict()
-        data["ok"] = not failed
-        if args.fix:
-            data["added"] = added
-        print(json.dumps(data, indent=2))
+        items = []
+        for path, r in results:
+            data = r["report"].to_dict()
+            data["ok"] = not r["failed"]
+            if args.fix:
+                data["added"] = r["added"]
+            items.append((path, data))
+        if len(items) == 1:
+            out = items[0][1]
+        else:
+            out = {"ok": not failed,
+                   "files": [dict(file=path, **data) for path, data in items]}
+        print(json.dumps(out, indent=2))
     else:
-        for k in added:
-            print(f"added      {k}")
-        print(format_text(report, args.env, args.strict))
+        for n, (path, r) in enumerate(results):
+            if len(results) > 1:
+                if n:
+                    print()
+                print(f"==> {path} <==")
+            for k in r["added"]:
+                print(f"added      {k}")
+            print(format_text(r["report"], path, args.strict))
     return 1 if failed else 0

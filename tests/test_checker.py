@@ -108,3 +108,50 @@ class FixTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MultiFileTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def write(self, name, text):
+        path = os.path.join(self.tmp.name, name)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        return path
+
+    def run_cli(self, *args):
+        buf = StringIO()
+        with redirect_stdout(buf):
+            code = main(list(args))
+        return code, buf.getvalue()
+
+    def test_text_headers_and_exit_code(self):
+        ex = self.write("ex", "A=x\n")
+        good = self.write("good.env", "A=1\n")
+        bad = self.write("bad.env", "")
+        code, out = self.run_cli(good, bad, "-e", ex)
+        self.assertEqual(code, 1)
+        self.assertIn(f"==> {good} <==", out)
+        self.assertIn(f"==> {bad} <==", out)
+        self.assertIn("missing    A", out)
+
+    def test_json_lists_files(self):
+        ex = self.write("ex", "A=x\n")
+        good = self.write("good.env", "A=1\n")
+        bad = self.write("bad.env", "")
+        code, out = self.run_cli(good, bad, "-e", ex, "--format", "json")
+        data = json.loads(out)
+        self.assertFalse(data["ok"])
+        self.assertEqual([f["file"] for f in data["files"]], [good, bad])
+        self.assertEqual([f["ok"] for f in data["files"]], [True, False])
+
+    def test_fix_applies_to_each_file(self):
+        ex = self.write("ex", "A=x\n")
+        a = self.write("a.env", "")
+        b = self.write("b.env", "")
+        self.run_cli(a, b, "-e", ex, "--fix")
+        for path in (a, b):
+            with open(path, encoding="utf-8") as fh:
+                self.assertEqual(fh.read(), "A=x\n")
