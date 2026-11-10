@@ -12,6 +12,7 @@ class Entry:
     key: str
     value: str
     line: int
+    raw: str = ""  # the KEY=VALUE text as written, without `export`
 
 
 @dataclass
@@ -74,5 +75,5 @@ def parse(text: str) -> ParsedEnv:
         if not ok:
             result.errors.append((lineno, f"unterminated quote for {key}"))
             continue
-        result.entries.append(Entry(key, value, lineno))
+        result.entries.append(Entry(key, value, lineno, stripped))
     return result

@@ -25,6 +25,7 @@ python -m envcheck     # or run without installing: PYTHONPATH=src
 envcheck                       # checks ./.env against ./.env.example
 envcheck prod.env -e .env.example
 envcheck --strict              # also fail on variables not in the example
+envcheck --fix                 # append missing variables from the example to .env
 envcheck --format json         # machine-readable output
 ```
 
@@ -37,6 +38,8 @@ envcheck --format json         # machine-readable output
 | `extra`     | In the env file, not in the example                                     | only `--strict` |
 
 A variable left blank in `.env.example` (`OPTIONAL_THING=`) is treated as optional, so a blank value in `.env` is fine.
+
+`--fix` copies the example's line for each missing variable (placeholder value included) to the end of the env file; existing lines are never modified. Findings are then re-checked, so remaining problems such as empty values still fail.
 
 Exit codes: `0` ok, `1` problems found, `2` a file could not be read.
 
