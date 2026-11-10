@@ -3,7 +3,7 @@
 import argparse
 import json
 import sys
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
 from . import __version__
 from .checker import Report, compare
@@ -15,9 +15,10 @@ def _read(path: str) -> str:
         return fh.read()
 
 
-def append_missing(path: str, env: ParsedEnv, example: ParsedEnv) -> List[str]:
+def append_missing(path: str, env: ParsedEnv, example: ParsedEnv,
+                   ignore: Iterable[str] = ()) -> List[str]:
     """Append example lines for keys absent from ``path``; return the keys added."""
-    keys = env.keys()
+    keys = env.keys() | set(ignore)
     added = {}
     for e in example.entries:
         if e.key not in keys and e.key not in added:
@@ -61,6 +62,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="treat variables missing from the example as errors")
     p.add_argument("--fix", action="store_true",
                    help="append variables missing from the env file, using the example's lines")
+    p.add_argument("--ignore", action="append", default=[], metavar="KEY",
+                   help="leave KEY out of all findings (repeatable)")
     p.add_argument("--format", choices=["text", "json"], default="text")
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return p
@@ -77,13 +80,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     added: List[str] = []
     if args.fix:
         try:
-            added = append_missing(args.env, env, example)
+            added = append_missing(args.env, env, example, args.ignore)
             if added:
                 env = parse(_read(args.env))
         except OSError as exc:
             print(f"envcheck: {exc}", file=sys.stderr)
             return 2
-    report = compare(env, example)
+    report = compare(env, example, args.ignore)
     failed = report.problems(args.strict) > 0
     if args.format == "json":
         data = report.to_dict()

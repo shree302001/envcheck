@@ -1,7 +1,7 @@
 """Compare an env file against an example template."""
 
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import Iterable, List, Tuple
 
 from .parser import ParsedEnv
 
@@ -31,12 +31,14 @@ class Report:
         }
 
 
-def compare(env: ParsedEnv, example: ParsedEnv) -> Report:
+def compare(env: ParsedEnv, example: ParsedEnv, ignore: Iterable[str] = ()) -> Report:
     """Compare ``env`` to ``example``.
 
     A variable is "empty" when it is blank in the env file but the example
     does not itself leave it blank (so optional variables stay optional).
+    Variables named in ``ignore`` are left out of every finding.
     """
+    skip = set(ignore)
     report = Report(syntax=list(env.errors))
     env_keys = env.keys()
     example_keys = example.keys()
@@ -44,12 +46,12 @@ def compare(env: ParsedEnv, example: ParsedEnv) -> Report:
     seen = {}
     for e in env.entries:
         seen.setdefault(e.key, []).append(e.line)
-    report.duplicates = [(k, lines) for k, lines in seen.items() if len(lines) > 1]
+    report.duplicates = [(k, lines) for k, lines in seen.items() if len(lines) > 1 and k not in skip]
 
     # Preserve the order of the example for readable output.
-    ordered_example = list(dict.fromkeys(e.key for e in example.entries))
+    ordered_example = list(dict.fromkeys(e.key for e in example.entries if e.key not in skip))
     report.missing = [k for k in ordered_example if k not in env_keys]
-    report.extra = [k for k in seen if k not in example_keys]
+    report.extra = [k for k in seen if k not in example_keys and k not in skip]
     for k in ordered_example:
         if k in env_keys and env.first(k).value == "" and example.first(k).value != "":
             report.empty.append(k)

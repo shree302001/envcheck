@@ -25,6 +25,7 @@ python -m envcheck     # or run without installing: PYTHONPATH=src
 envcheck                       # checks ./.env against ./.env.example
 envcheck prod.env -e .env.example
 envcheck --strict              # also fail on variables not in the example
+envcheck --ignore PORT --ignore DEBUG   # skip variables you set elsewhere
 envcheck --fix                 # append missing variables from the example to .env
 envcheck --format json         # machine-readable output
 ```

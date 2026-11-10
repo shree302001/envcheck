@@ -95,6 +95,16 @@ class FixTests(unittest.TestCase):
         _, out, _ = self._run("", "A=x\n", "--fix", "--format", "json")
         self.assertEqual(json.loads(out)["added"], ["A"])
 
+    def test_ignore_hides_findings(self):
+        code, out, _ = self._run("A=1\nZ=1\nZ=2\n", "A=x\nB=y\n",
+                                 "--ignore", "B", "--ignore", "Z", "--strict")
+        self.assertEqual(code, 0)
+        self.assertIn("OK", out)
+
+    def test_ignore_not_added_by_fix(self):
+        _, _, text = self._run("A=1\n", "A=x\nB=y\nC=z\n", "--fix", "--ignore", "B")
+        self.assertEqual(text, "A=1\nC=z\n")
+
 
 if __name__ == "__main__":
     unittest.main()
