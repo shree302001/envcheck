@@ -41,6 +41,8 @@ def format_text(report: Report, env_path: str, strict: bool) -> str:
         lines.append(f"missing    {k}")
     for k in report.empty:
         lines.append(f"empty      {k}")
+    for k, typ, value in report.invalid:
+        lines.append(f"invalid    {k} (expected {typ}, got {value!r})")
     for k, nums in report.duplicates:
         lines.append(f"duplicate  {k} (lines {', '.join(map(str, nums))})")
     for k in report.extra:

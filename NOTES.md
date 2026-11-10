@@ -16,7 +16,7 @@
 2. (done) `--fix` to append missing keys from the example to the env file.
 3. (done) `--ignore KEY` option.
 3b. (done) Check several env files at once.
-4. Optional type hints in the example (e.g. `# type: int`).
+4. (done) Optional type hints in the example (e.g. `# type: int`).
 5. Publish to PyPI.
 
 ## Done log
@@ -24,3 +24,4 @@
 - Iteration 2: `--fix` (appends missing keys using the example's raw lines, then re-checks); `Entry.raw`; 4 tests.
 - Iteration 3: `--ignore KEY` (repeatable; applies to all findings and `--fix`); 2 tests. Multi-file checking, type hints and PyPI remain optional future work; the tool is otherwise complete.
 - Iteration 4: multiple env files per run (`==> file <==` headers in text, `files` list in JSON when more than one); 3 tests.
+- Iteration 5: type hints (`# type: int|float|bool|url`, line above or inline in the example); new `invalid` finding that fails the check; 5 tests. Remaining: PyPI publishing (needs maintainer account).

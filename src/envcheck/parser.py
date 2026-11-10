@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import List, Tuple
 
 _KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*$")
+_HINT_RE = re.compile(r"#\s*type:\s*([A-Za-z]+)\s*$", re.IGNORECASE)
 
 
 @dataclass
@@ -13,6 +14,7 @@ class Entry:
     value: str
     line: int
     raw: str = ""  # the KEY=VALUE text as written, without `export`
+    type_hint: str = ""  # from a `# type: int` comment, lower-cased
 
 
 @dataclass
@@ -57,10 +59,18 @@ def _parse_value(raw: str) -> Tuple[str, bool]:
 
 def parse(text: str) -> ParsedEnv:
     result = ParsedEnv()
+    pending_hint = ""  # a `# type:` comment line applies to the next variable
     for lineno, line in enumerate(text.splitlines(), start=1):
         stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
+        if not stripped:
+            pending_hint = ""
             continue
+        if stripped.startswith("#"):
+            m = _HINT_RE.match(stripped)
+            if m:
+                pending_hint = m.group(1).lower()
+            continue
+        hint, pending_hint = pending_hint, ""
         if stripped.startswith("export "):
             stripped = stripped[len("export "):].lstrip()
         if "=" not in stripped:
@@ -75,5 +85,8 @@ def parse(text: str) -> ParsedEnv:
         if not ok:
             result.errors.append((lineno, f"unterminated quote for {key}"))
             continue
-        result.entries.append(Entry(key, value, lineno, stripped))
+        inline = _HINT_RE.search(raw)
+        if inline:
+            hint = inline.group(1).lower()
+        result.entries.append(Entry(key, value, lineno, stripped, hint))
     return result

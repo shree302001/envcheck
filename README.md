@@ -35,6 +35,7 @@ envcheck --format json         # machine-readable output
 |-------------|-------------------------------------------------------------------------|-----------------|
 | `missing`   | In the example, absent from the env file                                | yes             |
 | `empty`     | Blank in the env file, but has a value in the example                   | yes             |
+| `invalid`   | Value does not match the example's `# type:` hint (see below)           | yes             |
 | `duplicate` | Defined more than once in the env file                                  | yes             |
 | syntax      | Line is not `KEY=VALUE`, bad name, or unterminated quote                | yes             |
 | `extra`     | In the env file, not in the example                                     | only `--strict` |
@@ -42,6 +43,19 @@ envcheck --format json         # machine-readable output
 A variable left blank in `.env.example` (`OPTIONAL_THING=`) is treated as optional, so a blank value in `.env` is fine.
 
 `--fix` copies the example's line for each missing variable (placeholder value included) to the end of the env file; existing lines are never modified. Findings are then re-checked, so remaining problems such as empty values still fail.
+
+### Type hints
+
+Annotate a variable in the example with a `# type:` comment, either on the line above or after the value, and non-blank values in the env file are validated:
+
+```sh
+# type: int
+PORT=8080
+DEBUG=false  # type: bool
+API_URL=https://example.com  # type: url
+```
+
+Supported types: `int`, `float`, `bool` (`true/false/1/0/yes/no/on/off`, any case) and `url` (needs a scheme and host). Unknown type names are ignored. Blank values are reported as `empty`, not `invalid`.
 
 With several files, each result is preceded by a `==> file <==` header; `--format json` then returns `{"ok": ..., "files": [...]}` with a `file` key per entry (a single file keeps the flat object). `--fix` and `--ignore` apply to every file.
 

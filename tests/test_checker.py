@@ -155,3 +155,38 @@ class MultiFileTests(unittest.TestCase):
         for path in (a, b):
             with open(path, encoding="utf-8") as fh:
                 self.assertEqual(fh.read(), "A=x\n")
+
+
+class TypeHintTests(unittest.TestCase):
+    EXAMPLE = (
+        "# type: int\nPORT=8080\n"
+        "DEBUG=false  # type: bool\n"
+        "RATE=1.5 # type: float\n"
+        "URL=https://x.io # type: url\n"
+        "NAME=app\n"
+    )
+
+    def report(self, env_text, **kw):
+        return compare(parse(env_text), parse(self.EXAMPLE), **kw)
+
+    def test_valid_values_pass(self):
+        r = self.report("PORT=1\nDEBUG=Yes\nRATE=2\nURL=http://a.b\nNAME=z\n")
+        self.assertEqual(r.invalid, [])
+
+    def test_invalid_values_reported(self):
+        r = self.report("PORT=abc\nDEBUG=maybe\nRATE=x\nURL=nope\nNAME=z\n")
+        self.assertEqual([k for k, _, _ in r.invalid], ["PORT", "DEBUG", "RATE", "URL"])
+        self.assertEqual(r.problems(), 4)
+
+    def test_blank_is_empty_not_invalid(self):
+        r = self.report("PORT=\nDEBUG=true\nRATE=1\nURL=http://a.b\nNAME=z\n")
+        self.assertEqual(r.invalid, [])
+        self.assertEqual(r.empty, ["PORT"])
+
+    def test_hint_does_not_leak_across_blank_line(self):
+        ex = parse("# type: int\n\nA=x\n")
+        self.assertEqual(ex.first("A").type_hint, "")
+
+    def test_ignore_skips_check(self):
+        r = self.report("PORT=abc\nDEBUG=true\nRATE=1\nURL=http://a.b\nNAME=z\n", ignore=["PORT"])
+        self.assertEqual(r.invalid, [])
